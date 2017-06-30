@@ -1,7 +1,10 @@
 ![Image](https://i.gyazo.com/0aa3558e2830c1034298da2470918f27.png)
-# Fuzion-Hotpatcher has been detected.
+# Fuzion-Hotpatcher may have been detected.
 
-Using this Injector is no longer recommended. New injectors will not be made public by me.
+The testing account for this injector has received a untrusted ban (as shown in the banner above).
+Other users are reporting that using Hotpatcher is working fine without receiving any bans.
+
+**Use this injector at your own risk.** Future injectors will not be made public by me.
 
 # Thanks to
 
