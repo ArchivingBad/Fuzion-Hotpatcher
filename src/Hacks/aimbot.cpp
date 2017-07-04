@@ -29,7 +29,8 @@ int Settings::Aimbot::AutoAim::engageLockTTR = 700; // Time to Target Reacquisit
 bool Settings::Aimbot::AutoWall::enabled = false;
 float Settings::Aimbot::AutoWall::value = 10.0f;
 bool Settings::Aimbot::AimStep::enabled = false;
-float Settings::Aimbot::AimStep::value = 25.0f;
+float Settings::Aimbot::AimStep::min = 25.0f;
+float Settings::Aimbot::AimStep::max = 35.0f;
 bool Settings::Aimbot::AutoPistol::enabled = false;
 bool Settings::Aimbot::AutoShoot::enabled = false;
 bool Settings::Aimbot::AutoShoot::velocityCheck = false;
@@ -65,17 +66,10 @@ const int headVectors = 11;
 
 static xdo_t *xdo = xdo_new(NULL);
 
-std::unordered_map<Hitbox, std::vector<const char*>, Util::IntHash<Hitbox>> hitboxes = {
-		{ Hitbox::HITBOX_HEAD, { "head_0" } },
-		{ Hitbox::HITBOX_NECK, { "neck_0" } },
-		{ Hitbox::HITBOX_PELVIS, { "pelvis" } },
-		{ Hitbox::HITBOX_SPINE, { "spine_0", "spine_1", "spine_2", "spine_3" } },
-		{ Hitbox::HITBOX_LEGS, { "leg_upper_L", "leg_upper_R", "leg_lower_L", "leg_lower_R", "ankle_L", "ankle_R" } },
-		{ Hitbox::HITBOX_ARMS, { "hand_L", "hand_R", "arm_upper_L", "arm_lower_L", "arm_upper_R", "arm_lower_R" } },
-};
-
 std::unordered_map<ItemDefinitionIndex, AimbotWeapon_t, Util::IntHash<ItemDefinitionIndex>> Settings::Aimbot::weapons = {
-		{ ItemDefinitionIndex::INVALID, { false, false, false, false, false, false, 700, Bone::BONE_HEAD, ButtonCode_t::MOUSE_MIDDLE, false, false, 1.0f, SmoothType::SLOW_END, false, 0.0f, false, 0.0f, true, 180.0f, false, 25.0f, false, false, 2.0f, 2.0f, false, false, false, false, false, false, false, false, 0.1f ,false, 10.0f, false, false, 5.0f, false } },
+		{ ItemDefinitionIndex::INVALID, { false, false, false, false, false, false, 700, Bone::BONE_HEAD, ButtonCode_t::MOUSE_MIDDLE, false, false, 1.0f,
+												SmoothType::SLOW_END, false, 0.0f, false, 0.0f, true, 180.0f, false, 25.0f, 35.0f, false, false, 2.0f, 2.0f,
+												false, false, false, false, false, false, false, false, 0.1f ,false, 10.0f, false, false, 5.0f, false } },
 };
 
 static QAngle ApplyErrorToAngle(QAngle* angles, float margin)
@@ -96,7 +90,7 @@ void Aimbot::XDOCleanup()
 	xdo_free(xdo);
 }
 /* Fills points Vector. True if successful. False if not.  Credits for Original method - ReactiioN */
-bool HeadMultiPoint(C_BasePlayer *player, Vector points[])
+static bool HeadMultiPoint(C_BasePlayer *player, Vector points[])
 {
 	matrix3x4_t matrix[128];
 
@@ -139,7 +133,7 @@ bool HeadMultiPoint(C_BasePlayer *player, Vector points[])
 
 	return true;
 }
-float AutoWallBestSpot(C_BasePlayer *player, Vector &bestSpot)
+static float AutoWallBestSpot(C_BasePlayer *player, Vector &bestSpot)
 {
 	float bestDamage = Settings::Aimbot::AutoWall::value;
 	const std::map<int, int> *modelType = Util::GetModelTypeBoneMap(player);
@@ -188,7 +182,7 @@ float AutoWallBestSpot(C_BasePlayer *player, Vector &bestSpot)
 	return bestDamage;
 }
 
-float GetRealDistanceFOV(float distance, QAngle angle, CUserCmd* cmd)
+static float GetRealDistanceFOV(float distance, QAngle angle, CUserCmd* cmd)
 {
 	/*    n
 	    w + e
@@ -218,13 +212,13 @@ float GetRealDistanceFOV(float distance, QAngle angle, CUserCmd* cmd)
 	return aimingAt.DistTo(aimAt);
 }
 
-Vector VelocityExtrapolate(C_BasePlayer* player, Vector aimPos)
+static Vector VelocityExtrapolate(C_BasePlayer* player, Vector aimPos)
 {
 	return aimPos + (player->GetVelocity() * globalVars->interval_per_tick);
 }
 
 /* Original Credits to: https://github.com/goldenguy00 ( study! study! study! :^) ) */
-Vector GetClosestSpot( CUserCmd* cmd, C_BasePlayer* localPlayer, C_BasePlayer* enemy, AimTargetType aimTargetType = AimTargetType::FOV)
+static Vector GetClosestSpot( CUserCmd* cmd, C_BasePlayer* localPlayer, C_BasePlayer* enemy, AimTargetType aimTargetType = AimTargetType::FOV)
 {
 	QAngle viewAngles;
 	engine->GetViewAngles(viewAngles);
@@ -281,7 +275,7 @@ Vector GetClosestSpot( CUserCmd* cmd, C_BasePlayer* localPlayer, C_BasePlayer* e
 	return tempSpot;
 }
 
-C_BasePlayer* GetClosestPlayer(CUserCmd* cmd, bool visibleCheck, Vector& bestSpot, float& bestDamage, AimTargetType aimTargetType = AimTargetType::FOV)
+static C_BasePlayer* GetClosestPlayer(CUserCmd* cmd, bool visibleCheck, Vector& bestSpot, float& bestDamage, AimTargetType aimTargetType = AimTargetType::FOV)
 {
 	if (Settings::Aimbot::AutoAim::realDistance)
 		aimTargetType = AimTargetType::REAL_DISTANCE;
@@ -297,7 +291,6 @@ C_BasePlayer* GetClosestPlayer(CUserCmd* cmd, bool visibleCheck, Vector& bestSpo
 	{
 		if( lockedOn->GetAlive() && !Settings::Aimbot::AutoAim::closestBone && !Entity::IsSpotVisibleThroughEnemies(lockedOn, lockedOn->GetBonePosition((int)Settings::Aimbot::bone)) )
 		{
-			cvar->ConsoleDPrintf("[EngageLock]: Target died or non visible. Unlocking.\n");
 			lockedOn = NULL;
 			return NULL;
 		}
@@ -441,7 +434,7 @@ C_BasePlayer* GetClosestPlayer(CUserCmd* cmd, bool visibleCheck, Vector& bestSpo
 	return closestEntity;
 }
 
-void Aimbot::RCS(QAngle& angle, C_BasePlayer* player, CUserCmd* cmd)
+static void RCS(QAngle& angle, C_BasePlayer* player, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::RCS::enabled)
 		return;
@@ -472,8 +465,7 @@ void Aimbot::RCS(QAngle& angle, C_BasePlayer* player, CUserCmd* cmd)
 
 	RCSLastPunch = CurrentPunch;
 }
-
-void Aimbot::AimStep(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
+static void AimStep(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::AimStep::enabled)
 		return;
@@ -495,28 +487,30 @@ void Aimbot::AimStep(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
 
 	float fov = Math::GetFov(AimStepLastAngle, angle);
 
-	Aimbot::aimStepInProgress = ( fov > Settings::Aimbot::AimStep::value );
+	Aimbot::aimStepInProgress = ( fov > (Math::float_rand(Settings::Aimbot::AimStep::min, Settings::Aimbot::AimStep::max)) );
 
 	if (!Aimbot::aimStepInProgress)
 		return;
 
 	QAngle deltaAngle = AimStepLastAngle - angle;
-	Math::NormalizeAngles(deltaAngle);
 
+	Math::NormalizeAngles(deltaAngle);
+	float randX = Math::float_rand(Settings::Aimbot::AimStep::min, std::min(Settings::Aimbot::AimStep::max, fov));
+	float randY = Math::float_rand(Settings::Aimbot::AimStep::min, std::min(Settings::Aimbot::AimStep::max, fov));
 	if (deltaAngle.y < 0)
-		AimStepLastAngle.y += Settings::Aimbot::AimStep::value;
+		AimStepLastAngle.y += randY;
 	else
-		AimStepLastAngle.y -= Settings::Aimbot::AimStep::value;
+		AimStepLastAngle.y -= randY;
 
 	if(deltaAngle.x < 0)
-		AimStepLastAngle.x += Settings::Aimbot::AimStep::value;
+		AimStepLastAngle.x += randX;
 	else
-		AimStepLastAngle.x -= Settings::Aimbot::AimStep::value;
+		AimStepLastAngle.x -= randX;
 
 	angle = AimStepLastAngle;
 }
 
-void Salt(float& smooth)
+static void Salt(float& smooth)
 {
 	float sine = sin (globalVars->tickcount);
 	float salt = sine * Settings::Aimbot::Smooth::Salting::multiplier;
@@ -524,7 +518,7 @@ void Salt(float& smooth)
 	smooth *= oval;
 }
 
-void Aimbot::Smooth(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
+static void Smooth(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::Smooth::enabled)
 		return;
@@ -571,7 +565,7 @@ void Aimbot::Smooth(C_BasePlayer* player, QAngle& angle, CUserCmd* cmd)
 	angle = viewAngles + toChange;
 }
 
-void Aimbot::AutoCrouch(C_BasePlayer* player, CUserCmd* cmd)
+static void AutoCrouch(C_BasePlayer* player, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::AutoCrouch::enabled)
 		return;
@@ -582,7 +576,7 @@ void Aimbot::AutoCrouch(C_BasePlayer* player, CUserCmd* cmd)
 	cmd->buttons |= IN_DUCK;
 }
 
-void Aimbot::AutoSlow(C_BasePlayer* player, float& forward, float& sideMove, float& bestDamage, C_BaseCombatWeapon* active_weapon, CUserCmd* cmd)
+static void AutoSlow(C_BasePlayer* player, float& forward, float& sideMove, float& bestDamage, C_BaseCombatWeapon* active_weapon, CUserCmd* cmd)
 {
 
 	if (!Settings::Aimbot::AutoSlow::enabled){
@@ -629,7 +623,7 @@ void Aimbot::AutoSlow(C_BasePlayer* player, float& forward, float& sideMove, flo
 	}
 }
 
-void Aimbot::AutoPistol(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
+static void AutoPistol(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::AutoPistol::enabled)
 		return;
@@ -646,7 +640,7 @@ void Aimbot::AutoPistol(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
 		cmd->buttons &= ~IN_ATTACK;
 }
 
-void Aimbot::AutoShoot(C_BasePlayer* player, C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
+static void AutoShoot(C_BasePlayer* player, C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
 {
 	if (!Settings::Aimbot::AutoShoot::enabled)
 		return;
@@ -692,7 +686,7 @@ void Aimbot::AutoShoot(C_BasePlayer* player, C_BaseCombatWeapon* activeWeapon, C
 	}
 }
 
-void Aimbot::ShootCheck(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
+static void ShootCheck(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
 {
 	if (!Settings::AntiAim::Pitch::enabled && !Settings::AntiAim::Yaw::enabled)
 		return;
@@ -715,7 +709,7 @@ void Aimbot::ShootCheck(C_BaseCombatWeapon* activeWeapon, CUserCmd* cmd)
 		cmd->buttons &= ~IN_ATTACK;
 }
 
-void Aimbot::NoShoot(C_BaseCombatWeapon* activeWeapon, C_BasePlayer* player, CUserCmd* cmd)
+static void NoShoot(C_BaseCombatWeapon* activeWeapon, C_BasePlayer* player, CUserCmd* cmd)
 {
 	if (player && Settings::Aimbot::NoShoot::enabled)
 	{
@@ -841,15 +835,15 @@ void Aimbot::CreateMove(CUserCmd* cmd)
 	}
 
 
-	Aimbot::AimStep(player, angle, cmd);
-	Aimbot::AutoCrouch(player, cmd);
-	Aimbot::AutoSlow(player, oldForward, oldSideMove, bestDamage, activeWeapon, cmd);
-	Aimbot::AutoPistol(activeWeapon, cmd);
-	Aimbot::AutoShoot(player, activeWeapon, cmd);
-	Aimbot::RCS(angle, player, cmd);
-	Aimbot::Smooth(player, angle, cmd);
-	Aimbot::ShootCheck(activeWeapon, cmd);
-	Aimbot::NoShoot(activeWeapon, player, cmd);
+	AimStep(player, angle, cmd);
+	AutoCrouch(player, cmd);
+	AutoSlow(player, oldForward, oldSideMove, bestDamage, activeWeapon, cmd);
+	AutoPistol(activeWeapon, cmd);
+	AutoShoot(player, activeWeapon, cmd);
+	RCS(angle, player, cmd);
+	Smooth(player, angle, cmd);
+	ShootCheck(activeWeapon, cmd);
+	NoShoot(activeWeapon, player, cmd);
 
 	Math::NormalizeAngles(angle);
 	Math::ClampAngles(angle);
@@ -858,9 +852,9 @@ void Aimbot::CreateMove(CUserCmd* cmd)
 	{
 		if(Settings::Aimbot::moveMouse && !Settings::Aimbot::silent) // not a good idea to use mouse-based aimbot and silent aim at the same time
 		{
-			float sensitivity = cvar->FindVar("sensitivity")->GetFloat();
-			float m_pitch = cvar->FindVar("m_pitch")->GetFloat();
-			float m_yaw = cvar->FindVar("m_yaw")->GetFloat();
+			float sensitivity = cvar->FindVar(XORSTR("sensitivity"))->GetFloat();
+			float m_pitch = cvar->FindVar(XORSTR("m_pitch"))->GetFloat();
+			float m_yaw = cvar->FindVar(XORSTR("m_yaw"))->GetFloat();
 			
 			xdo_move_mouse_relative(xdo, (int) -( (angle.y - oldAngle.y) / (m_pitch * sensitivity) ),
 									     (int) ( (angle.x - oldAngle.x) / (m_yaw * sensitivity))
@@ -877,22 +871,21 @@ void Aimbot::CreateMove(CUserCmd* cmd)
 	if (!Settings::Aimbot::silent)
 		engine->SetViewAngles(cmd->viewangles);
 }
-
 void Aimbot::FireGameEvent(IGameEvent* event)
 {
 	if (!event)
 		return;
 
-	if (strcmp(event->GetName(), "player_connect_full") == 0 || strcmp(event->GetName(), "cs_game_disconnected") == 0 )
+	if (strcmp(event->GetName(), XORSTR("player_connect_full")) == 0 || strcmp(event->GetName(), XORSTR("cs_game_disconnected")) == 0 )
 	{
-		if (event->GetInt("userid") && engine->GetPlayerForUserID(event->GetInt("userid")) != engine->GetLocalPlayer())
+		if (event->GetInt(XORSTR("userid")) && engine->GetPlayerForUserID(event->GetInt(XORSTR("userid"))) != engine->GetLocalPlayer())
 			return;
 		Aimbot::friends.clear();
 	}
-	if( strcmp(event->GetName(), "player_death") == 0 )
+	if( strcmp(event->GetName(), XORSTR("player_death")) == 0 )
 	{
-		int attacker_id = engine->GetPlayerForUserID(event->GetInt("attacker"));
-		int deadPlayer_id = engine->GetPlayerForUserID(event->GetInt("userid"));
+		int attacker_id = engine->GetPlayerForUserID(event->GetInt(XORSTR("attacker")));
+		int deadPlayer_id = engine->GetPlayerForUserID(event->GetInt(XORSTR("userid")));
 
 		if (attacker_id == deadPlayer_id) // suicide
 			return;
@@ -903,7 +896,6 @@ void Aimbot::FireGameEvent(IGameEvent* event)
 		killTimes.push_back(Util::GetEpochTime());
 	}
 }
-
 void Aimbot::UpdateValues()
 {
 	C_BasePlayer* localplayer = (C_BasePlayer*) entityList->GetClientEntity(engine->GetLocalPlayer());
@@ -935,7 +927,8 @@ void Aimbot::UpdateValues()
 	Settings::Aimbot::AutoAim::engageLockTR = currentWeaponSetting.engageLockTR;
 	Settings::Aimbot::AutoAim::engageLockTTR = currentWeaponSetting.engageLockTTR;
 	Settings::Aimbot::AimStep::enabled = currentWeaponSetting.aimStepEnabled;
-	Settings::Aimbot::AimStep::value = currentWeaponSetting.aimStepValue;
+	Settings::Aimbot::AimStep::min = currentWeaponSetting.aimStepMin;
+	Settings::Aimbot::AimStep::max = currentWeaponSetting.aimStepMax;
 	Settings::Aimbot::AutoPistol::enabled = currentWeaponSetting.autoPistolEnabled;
 	Settings::Aimbot::AutoShoot::enabled = currentWeaponSetting.autoShootEnabled;
 	Settings::Aimbot::AutoShoot::autoscope = currentWeaponSetting.autoScopeEnabled;
