@@ -38,7 +38,7 @@ sudo echo "2" | sudo tee /proc/sys/kernel/yama/ptrace_scope # Only allows root t
 sudo cp "$filename" /"$filename"
 
 input="$(
-sudo hotpatcher -l $(pwd)/libFuzion.so $csgo_pid | tail -n 2 | head -n 1
+sudo hotpatcher -l $(pwd)/$filename.so $csgo_pid | tail -n 2 | head -n 1
 )" # Only read the 2nd latest line of the output from hotpatcher
 
 sudo rm /"$filename"
