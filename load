@@ -1,7 +1,6 @@
 #!/bin/bash
 
 echo "Hotpatcher is detected as a injector. It is recommended not to inject using Hotpatcher."
-exit
 
 csgo_pid=$(pidof csgo_linux64)
 if [ -z "$csgo_pid" ]; then
