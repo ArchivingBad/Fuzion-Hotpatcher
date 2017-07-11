@@ -6,6 +6,10 @@ Other users are reporting that using Hotpatcher is working fine without receivin
 
 **Use this injector at your own risk.** Future injectors will not be made public by me.
 
+### CS:GO Update 10/7/2017
+
+Users are reporting bans after the 10/7/2017 Update with **gdb, Hotpatcher and LD_PRELOAD**. It is suggest to _not_ inject anything at the moment.
+
 # Thanks to
 
 * [Original AimTux](https://github.com/AimTuxOfficial/AimTux)
