@@ -1,14 +1,15 @@
 ![Image](https://i.gyazo.com/0aa3558e2830c1034298da2470918f27.png)
-# Fuzion-Hotpatcher may have been detected.
+# Fuzion has been detected.
 
-The testing account for this injector has received a untrusted ban (as shown in the banner above).
-Other users are reporting that using Hotpatcher is working fine without receiving any bans.
+The actual cheats, AimTux, Fuzion etc. (forks of AimTux) all have been sigged by Valve's anti cheat. It is recommended to make your own paste or edit the current source code to receive a new signature.
 
-**Use this injector at your own risk.** Future injectors will not be made public by me.
+I suggest checking out [Coldpatcher](https://github.com/ikfe/AimTux-ColdPatch) if you want a nice meme.
 
-### CS:GO Update 10/7/2017
+# EOL
 
-Users are reporting bans after the 10/7/2017 Update with **gdb, Hotpatcher and LD_PRELOAD**. It is suggest to _not_ inject anything at the moment.
+With that said, Hotpatcher reached its end of life. Support will no longer be given.
+
+Feel free to join the Fuzion Discord: https://discord.gg/An8YGmS
 
 # Thanks to
 
